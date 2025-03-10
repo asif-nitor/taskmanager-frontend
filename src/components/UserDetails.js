@@ -15,6 +15,7 @@ const UserDetails = () => {
   const [selectedUserId, setSelectedUserId] = useState(null);
   const navigate = useNavigate();
   const [modalVisible, setModalVisible] = useState(false);
+  const [api, contextHolder] = notification.useNotification();
 
   useEffect(() => {
     const loadUserDetails = async () => {
@@ -27,17 +28,23 @@ const UserDetails = () => {
           role: response.data.role,
         });
         setTasks(response.data.tasks || []);
-        debugger
         setError('');
       } catch (err) {
         console.error('Fetch User Details Error:', err.response || err);
         setError(err.response?.data?.error || 'Failed to fetch user details');
-        notification.error({
+        api.open({
           message: 'Error',
           description: err.response?.data?.error || 'Failed to fetch user details',
           placement: 'topRight',
-          duration: 3,
+          duration: 20,
         });
+
+        // notification.error({
+        //   message: 'Error',
+        //   description: err.response?.data?.error || 'Failed to fetch user details',
+        //   placement: 'topRight',
+        //   duration: 3,
+        // });
       } finally {
         setLoading(false);
       }
@@ -50,11 +57,16 @@ const UserDetails = () => {
     try {
       const response = await createTask(taskData);
       console.log('Task Created:', response.data);
-      // openNotification(taskData);
-      setTasks(prevData => ({
-        ...prevData,
-        tasks: [...(prevData.tasks || []), response.data.data],
-      }));
+      openNotification(taskData);
+      setTasks((prev) => {
+        const newTask = {
+          ...response.data, // Use response.data directly
+          key: response.data.id,
+        };
+        const updatedTasks = [newTask, ...prev];
+        console.log('Updated tasks:', updatedTasks);
+        return updatedTasks;
+      });
       
       setModalVisible(false);
       setError('');
@@ -62,6 +74,12 @@ const UserDetails = () => {
     } catch (err) {
       console.error('Create Task Error:', err.response || err);
       const errorMessage = err.response?.data?.errors?.join(', ') || err.response?.data?.error || 'Failed to create task';
+      api.open({
+        message: 'Error',
+        description: errorMessage,
+        placement: 'topRight',
+        duration: 20,
+      });
       // notification.error({
       //   message: 'Error',
       //   description: errorMessage,
@@ -70,6 +88,16 @@ const UserDetails = () => {
       // });
       setError(errorMessage);
     }
+  };
+
+  const openNotification = (taskData) => {
+    console.log('Opening notification with:', taskData);
+    api.open({
+      message: `Task Assigned to ${user.email}`,
+      description: `The task "${taskData.title}" has been created successfully!`,
+      placement: 'topRight',
+      duration: 20,
+    });
   };
 
   // Columns for the task list
@@ -131,52 +159,55 @@ const UserDetails = () => {
   }
 
   return (
-    <div style={{ maxWidth: 800, margin: '20px auto', padding: '20px' }}>
-      <h2>User Details</h2>
-      <Descriptions bordered column={1}>
-        <Descriptions.Item label="ID">{user.id}</Descriptions.Item>
-        <Descriptions.Item label="Email">{user.email}</Descriptions.Item>
-        <Descriptions.Item label="Role">{user.role}</Descriptions.Item>
-      </Descriptions>
-      <Space size="middle">
-         <Button
-          type="primary"
-          onClick={() => {
-            setSelectedUserId(user.id);
-            setModalVisible(true);
+    <>
+      {contextHolder}
+      <div style={{ maxWidth: 800, margin: '20px auto', padding: '20px' }}>
+        <h2>User Details</h2>
+        <Descriptions bordered column={1}>
+          <Descriptions.Item label="ID">{user.id}</Descriptions.Item>
+          <Descriptions.Item label="Email">{user.email}</Descriptions.Item>
+          <Descriptions.Item label="Role">{user.role}</Descriptions.Item>
+        </Descriptions>
+        <Space size="middle">
+           <Button
+            type="primary"
+            onClick={() => {
+              setSelectedUserId(user.id);
+              setModalVisible(true);
+            }}
+          >
+            Create Task
+          </Button>
+        </Space>
+
+        <h3 style={{ marginTop: '20px' }}>Assigned Tasks</h3>
+        <Table
+          dataSource={tasks}
+          columns={taskColumns}
+          rowKey="id"
+          pagination={{ pageSize: 20 }}
+          locale={{ emptyText: 'No tasks assigned to this user' }}
+        />
+
+        <CreateTaskModal
+          visible={modalVisible}
+          onCancel={() => {
+            setModalVisible(false);
+            setSelectedUserId(null);
           }}
+          onCreate={handleCreateTask}
+          assignedToId={selectedUserId}
+        />
+
+        <Button
+          type="default"
+          onClick={() => navigate('/users')} // Navigate back to UserList
+          style={{ marginTop: '20px' }}
         >
-          Create Task
+          Back to User List
         </Button>
-      </Space>
-
-      <h3 style={{ marginTop: '20px' }}>Assigned Tasks</h3>
-      <Table
-        dataSource={tasks}
-        columns={taskColumns}
-        rowKey="id"
-        pagination={{ pageSize: 20 }}
-        locale={{ emptyText: 'No tasks assigned to this user' }}
-      />
-
-      <CreateTaskModal
-        visible={modalVisible}
-        onCancel={() => {
-          setModalVisible(false);
-          setSelectedUserId(null);
-        }}
-        onCreate={handleCreateTask}
-        assignedToId={selectedUserId}
-      />
-
-      <Button
-        type="default"
-        onClick={() => navigate('/users')} // Navigate back to UserList
-        style={{ marginTop: '20px' }}
-      >
-        Back to User List
-      </Button>
-    </div>
+      </div>
+    </>
   );
 };
 

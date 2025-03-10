@@ -17,6 +17,7 @@ const UserList = () => {
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [notificationApi, contextHolder] = notification.useNotification();
   const [searchQuery, setSearchQuery] = useState('');
+  const [userEmail, setUserEmail] = useState(null);
   const [taskTitle, setTaskTitle] = useState('New Task');
   const navigate = useNavigate(); 
 
@@ -41,7 +42,7 @@ const UserList = () => {
   const openNotification = (taskData) => {
     setTaskTitle(taskData.title); // Update task title for notification
     notificationApi.info({
-      message: `Task Created: ${taskData.title}`,
+      message: `Task Assigned to ${userEmail}`,
       description: (
         <NotificationContext.Consumer>
           {({ taskTitle }) => `The task "${taskTitle}" has been created successfully!`}
@@ -55,8 +56,19 @@ const UserList = () => {
   const handleCreateTask = async (taskData) => {
     try {
       const response = await createTask(taskData);
+      debugger
+      setUserEmail(response.data.assigned_to.email || '')
       console.log('Task Created:', response.data);
       openNotification(taskData);
+      // setTasks((prev) => {
+      //   const newTask = {
+      //     ...response.data, // Use response.data directly
+      //     key: response.data.id,
+      //   };
+      //   const updatedTasks = [newTask, ...prev];
+      //   console.log('Updated tasks:', updatedTasks);
+      //   return updatedTasks;
+      // });
       setModalVisible(false);
       setError('');
     } catch (err) {

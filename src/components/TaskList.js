@@ -1,31 +1,32 @@
 // src/components/TaskList.js
-import React, { useState, useEffect, createContext } from 'react';
-import { Space, Table, Tag, Input, Col, Row, Select, DatePicker, notification } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Space, Table, Tag, Input, Select, DatePicker, notification } from 'antd';
 import { fetchTasks } from '../services/api';
 import { useActionCable } from '../utils/ActionCableContext';
-
-const NotificationContext = createContext({
-  taskTitle: 'New Task',
-});
 
 const TaskList = () => {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const { Option } = Select;
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [dateRange, setDateRange] = useState([null, null]);
-  const { Option } = Select;
-  const { cable, notifications } = useActionCable();
-  const [taskTitle, setTaskTitle] = useState('New Task');
+  const { cable } = useActionCable(); // Only need cable here
   const [api, contextHolder] = notification.useNotification();
 
+  // Fetch initial tasks
   useEffect(() => {
     const loadTasks = async () => {
       setLoading(true);
       try {
         const [startDate, endDate] = dateRange || [null, null];
-        const response = await fetchTasks({q: searchQuery, status: statusFilter, start_date: startDate ? startDate.format('YYYY-MM-DD') : '', end_date: endDate ? endDate.format('YYYY-MM-DD') : '',});
+        const response = await fetchTasks({
+          q: searchQuery,
+          status: statusFilter,
+          start_date: startDate ? startDate.format('YYYY-MM-DD') : '',
+          end_date: endDate ? endDate.format('YYYY-MM-DD') : '',
+        });
         const formattedTasks = response.data.map(task => ({
           ...task,
           key: task.id,
@@ -42,51 +43,53 @@ const TaskList = () => {
     loadTasks();
   }, [searchQuery, statusFilter, dateRange]);
 
-
+  // Handle ActionCable subscription
   useEffect(() => {
-    if (cable) {
-      const subscription = cable.subscriptions.create(
-        { channel: 'TaskChannel' },
-        {
-          received: (data) => {
-            if (data.action === 'task_assigned') {
-              openNotification(data);
-              setTasks((prev) => {
-                const newTasks = [...prev, { ...data.task, key: data.task.id }];
-                console.log('Updated tasks:', newTasks);
-                return newTasks;
-              });
-            }
-          },
-        }
-      );
-
-      return () => {
-        subscription.unsubscribe();
-      };
+    if (!cable) {
+      console.log('Cable not available');
+      return;
     }
-  }, []);
+
+    console.log('Subscribing to TaskChannel');
+    const subscription = cable.subscriptions.create(
+      { channel: 'TaskChannel' },
+      {
+        connected: () => console.log('Connected to TaskChannel'),
+        disconnected: () => console.log('Disconnected from TaskChannel'),
+        received: (data) => {
+          console.log('Received data:', data);
+          if (data.action === 'task_assigned') {
+            console.log('Task assigned detected:', data);
+            openNotification(data);
+            setTasks((prev) => {
+              const newTasks = [...prev, { ...data.task, key: data.task.id }];
+              console.log('Updated tasks:', newTasks);
+              return newTasks;
+            });
+          }
+        },
+      }
+    );
+
+    return () => {
+      console.log('Unsubscribing from TaskChannel');
+      subscription.unsubscribe();
+    };
+  }, [cable]); // Depend on cable to re-subscribe if it changes
 
   const openNotification = (data) => {
-    debugger
+    console.log('Opening notification with:', data);
     api.open({
-      message: data.title,
+      message: data.task.title, // Use data.task.title instead of data.title
       description: data.message,
+      placement: 'topRight',
       duration: 20,
     });
   };
 
-  const handleSearch = (e) => {
-    setSearchQuery(e.target.value);
-  };
-
-  const handleStatusChange = (value) => {
-    setStatusFilter(value);
-  };
-
-  const handleDateRangeChange = (dates) => {
-    setDateRange(dates);
-  };
+  const handleSearch = (e) => setSearchQuery(e.target.value);
+  const handleStatusChange = (value) => setStatusFilter(value);
+  const handleDateRangeChange = (dates) => setDateRange(dates);
 
   const columns = [
     { title: 'Title', dataIndex: 'title', key: 'title', render: (text) => <a>{text}</a> },
@@ -110,7 +113,7 @@ const TaskList = () => {
       title: 'Assigned To',
       dataIndex: 'assigned_to',
       key: 'assigned_to',
-      render: (assigned_to) => `${assigned_to.email || 'Unassigned'}`,
+      render: (assigned_to) => assigned_to?.email || 'Unassigned',
     },
     {
       title: 'Action',
@@ -125,50 +128,45 @@ const TaskList = () => {
   ];
 
   return (
-    <NotificationContext.Provider value={{ taskTitle }}>
-      {contextHolder}
-    <div style={{ maxWidth: 1000, margin: '20px auto', padding: '20px' }}>
-      <h2>Task List</h2>
-      {error && <p style={{ color: 'red', textAlign: 'center' }}>{error}</p>}
-
-      <Space.Compact block>
-        <Input
-          placeholder="Search by assigned user's email"
-          value={searchQuery}
-          onChange={handleSearch}
-          style={{ width: '30%', marginBottom: '20px' }}
+    <>
+      {contextHolder} {/* Must be at the root for notifications to work */}
+      <div style={{ maxWidth: 1000, margin: '20px auto', padding: '20px' }}>
+        <h2>Task List</h2>
+        {error && <p style={{ color: 'red', textAlign: 'center' }}>{error}</p>}
+        <Space.Compact block>
+          <Input
+            placeholder="Search by assigned user's email"
+            value={searchQuery}
+            onChange={handleSearch}
+            style={{ width: '30%', marginBottom: '20px' }}
+          />
+          <DatePicker.RangePicker
+            value={dateRange}
+            onChange={handleDateRangeChange}
+            format="YYYY-MM-DD"
+            style={{ width: '45%', marginBottom: '20px' }}
+          />
+          <Select
+            placeholder="Filter by status"
+            value={statusFilter}
+            onChange={handleStatusChange}
+            style={{ width: '25%', marginBottom: '20px' }}
+            allowClear
+          >
+            <Option value="pending">Pending</Option>
+            <Option value="in_progress">In Progress</Option>
+            <Option value="completed">Completed</Option>
+          </Select>
+        </Space.Compact>
+        <Table
+          columns={columns}
+          dataSource={tasks}
+          loading={loading}
+          rowKey="id"
+          pagination={{ pageSize: 10 }}
         />
-        <DatePicker.RangePicker
-          value={dateRange}
-          onChange={handleDateRangeChange}
-          format="YYYY-MM-DD"
-          style={{
-            width: '45%',
-            marginBottom: '20px'
-          }}
-        />
-        <Select
-          placeholder="Filter by status"
-          value={statusFilter}
-          onChange={handleStatusChange}
-          style={{ idth: '25%', marginBottom: '20px' }}
-          allowClear
-        >
-          <Option value="pending">Pending</Option>
-          <Option value="in_progress">In Progress</Option>
-          <Option value="completed">Completed</Option>
-        </Select>
-      </Space.Compact>
-      
-      <Table
-        columns={columns}
-        dataSource={tasks}
-        loading={loading}
-        rowKey="id"
-        pagination={{ pageSize: 10 }}
-      />
-    </div>
-    </NotificationContext.Provider>
+      </div>
+    </>
   );
 };
 

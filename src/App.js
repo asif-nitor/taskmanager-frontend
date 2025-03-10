@@ -23,9 +23,22 @@ function App() {
     }
   }, []);
 
-  const ProtectedRoute = ({ children }) => {
-    return user ? children : <Navigate to="/signin" />;
+  const isAdminOrManager = user && (user.role === 'admin' || user.role === 'manager');
+
+  // ProtectedRoute with role-based access
+  const ProtectedRoute = ({ children, restrictToAdminManager = false }) => {
+    if (!user) {
+      return <Navigate to="/signin" />;
+    }
+    if (restrictToAdminManager && !isAdminOrManager) {
+      return <Navigate to="/tasks" />; // Redirect users to tasks
+    }
+    return children;
   };
+
+  // const ProtectedRoute = ({ children }) => {
+  //   return user ? children : <Navigate to="/signin" />;
+  // };
 
   const CenteredLayout = ({ children }) => (
     <div
@@ -46,17 +59,28 @@ function App() {
         <h1>Task Manager</h1>
         {user ? (
           <div>
-            <p>Welcome, {user.email} ({user.role})</p>
+            {/* Conditional welcome message */}
+            <p>
+              Welcome, {user.email}
+              {isAdminOrManager && ` (${user.role})`}
+            </p>
             <nav style={{ marginBottom: '20px' }}>
-              <Link to="/users" style={{ marginRight: '20px' }}>Users</Link>
-              <Link to="/tasks" style={{ marginRight: '20px' }}>Tasks</Link>
+              {/* Show Users link only for admin or manager */}
+              {isAdminOrManager && (
+                <Link to="/users" style={{ marginRight: '20px' }}>
+                  Users
+                </Link>
+              )}
+              <Link to="/tasks" style={{ marginRight: '20px' }}>
+                Tasks
+              </Link>
               <SignOut setUser={setUser} />
             </nav>
             <Routes>
               <Route
                 path="/users"
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRoute restrictToAdminManager={true}>
                     <UserList />
                   </ProtectedRoute>
                 }
@@ -74,18 +98,27 @@ function App() {
               <Route
                 path="/users/:userId"
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRoute restrictToAdminManager={true}>
                     <UserDetails />
                   </ProtectedRoute>
                 }
+              />
+              {/* Redirect any unmatched route to /tasks for logged-in users */}
+              <Route
+                path="*"
+                element={<Navigate to="/tasks" />}
               />
             </Routes>
           </div>
         ) : (
           <>
             <nav style={{ marginBottom: '20px' }}>
-              <Link to="/signin" style={{ marginRight: '20px' }}>Sign In</Link>
-              <Link to="/signup">Sign Up</Link>
+              <Link to="/signin" style={{ marginRight: '20px' }}>
+                Sign In
+              </Link>
+              <Link to="/signup">
+                Sign Up
+              </Link>
             </nav>
             <Routes>
               <Route

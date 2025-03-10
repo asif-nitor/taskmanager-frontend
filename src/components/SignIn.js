@@ -14,14 +14,23 @@ const SignIn = ({ setUser }) => {
   const navigate = useNavigate();
   const [notificationApi, contextHolder] = notification.useNotification();
 
+  // const openNotification = (userEmail) => {
+  //   notificationApi.info({
+  //     message: `Sign-in Successful`,
+  //     description: (
+  //       <NotificationContext.Consumer>
+  //         {({ userEmail }) => `Welcome back, ${userEmail}!`}
+  //       </NotificationContext.Consumer>
+  //     ),
+  //     placement: 'topRight',
+  //     duration: 10,
+  //   });
+  // };
+
   const openNotification = (userEmail) => {
     notificationApi.info({
-      message: `Sign-in Successful`,
-      description: (
-        <NotificationContext.Consumer>
-          {({ userEmail }) => `Welcome back, ${userEmail}!`}
-        </NotificationContext.Consumer>
-      ),
+      message: 'Sign-in Successful',
+      description: `Welcome back, ${userEmail}!`,
       placement: 'topRight',
       duration: 10,
     });
@@ -39,17 +48,22 @@ const SignIn = ({ setUser }) => {
       setUser(user);
       setError('');
       openNotification(user.email);
-      debugger
       navigate('/tasks');
     } catch (err) {
       console.error('Sign-in Error:', err.response || err);
       const errorMessage = err.response?.data?.error || 'Sign-in failed';
-      notificationApi.error({
+      notificationApi.info({
         message: 'Sign-in Error',
         description: errorMessage,
         placement: 'topRight',
-        duration: 10,
+        duration: 20,
       });
+      // notificationApi.error({
+      //   message: 'Sign-in Error',
+      //   description: errorMessage,
+      //   placement: 'topRight',
+      //   duration: 10,
+      // });
       setError(errorMessage);
       form.setFields([{ name: 'password', errors: [errorMessage] }]);
     }
