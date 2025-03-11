@@ -38,6 +38,12 @@ export const createTask = (taskData) => api.post('/api/v1/tasks', { task: taskDa
 
 export const fetchUserDetails = (userId) => api.get(`/api/v1/users/${userId}`);
 
-export const updateTask = (taskId, taskData) => api.patch(`/api/v1/tasks/${taskId}`, taskData);
+export const updateTask = async (taskId, taskData) => {
+  return api.put(`/api/v1/tasks/${taskId}`, { task: taskData });
+};
+
+export const fetchTaskDetails = async (taskId) => {
+  return api.get(`/api/v1/tasks/${taskId}`);
+};
 
 export default api;

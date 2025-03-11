@@ -1,20 +1,21 @@
 // src/components/UserDetails.js
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { fetchUserDetails, createTask, updateTask } from '../services/api';
-import { Table, Button, Descriptions, notification,Tag, Space } from 'antd';
+import { fetchUserDetails, createTask, updateTask, fetchTaskDetails } from '../services/api';
+import { Table, Button, Descriptions, notification, Tag, Space } from 'antd';
 import CreateTaskModal from './CreateTaskModal';
 
 const UserDetails = () => {
-  const params = useParams(); // Get all params for debugging
+  const params = useParams();
   const userId = params.userId;
   const [user, setUser] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [selectedUserId, setSelectedUserId] = useState(null);
-  const navigate = useNavigate();
   const [modalVisible, setModalVisible] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
+  const navigate = useNavigate();
   const [api, contextHolder] = notification.useNotification();
 
   useEffect(() => {
@@ -38,13 +39,6 @@ const UserDetails = () => {
           placement: 'topRight',
           duration: 20,
         });
-
-        // notification.error({
-        //   message: 'Error',
-        //   description: err.response?.data?.error || 'Failed to fetch user details',
-        //   placement: 'topRight',
-        //   duration: 3,
-        // });
       } finally {
         setLoading(false);
       }
@@ -53,54 +47,68 @@ const UserDetails = () => {
     loadUserDetails();
   }, [userId]);
 
-  const handleCreateTask = async (taskData) => {
+  const handleEditTask = async (taskId) => {
+    console.log('Editing task with ID:', taskId); // Debug
     try {
-      const response = await createTask(taskData);
-      console.log('Task Created:', response.data);
-      openNotification(taskData);
-      setTasks((prev) => {
-        const newTask = {
-          ...response.data, // Use response.data directly
-          key: response.data.id,
-        };
-        const updatedTasks = [newTask, ...prev];
-        console.log('Updated tasks:', updatedTasks);
-        return updatedTasks;
-      });
-      
-      setModalVisible(false);
-      setError('');
-      // window.location.reload();
+      const response = await fetchTaskDetails(taskId);
+      console.log('Task details fetched:', response.data); // Debug
+      setEditingTask(response.data);
+      setModalVisible(true);
     } catch (err) {
-      console.error('Create Task Error:', err.response || err);
-      const errorMessage = err.response?.data?.errors?.join(', ') || err.response?.data?.error || 'Failed to create task';
+      console.error('Fetch Task Details Error:', err.response || err);
+      api.open({
+        message: 'Error',
+        description: err.response?.data?.error || 'Failed to fetch task details',
+        placement: 'topRight',
+        duration: 20,
+      });
+    }
+  };
+
+  const handleCreateOrUpdateTask = async (taskData) => {
+    try {
+      let response;
+      if (editingTask) {
+        response = await updateTask(editingTask.id, taskData);
+        debugger
+        setTasks(prevTasks =>
+          prevTasks.map(task => (task.id === editingTask.id ? { ...task, ...response.data } : task))
+        );
+        api.open({
+          message: 'Task Updated',
+          description: `The task "${response.data.title}" has been updated successfully!`,
+          placement: 'topRight',
+          duration: 20,
+        });
+      } else {
+        response = await createTask(taskData);
+        setTasks(prevTasks => [
+          { ...response.data, key: response.data.id },
+          ...prevTasks,
+        ]);
+        api.open({
+          message: 'Task Created',
+          description: `The task "${response.data.title}" has been created successfully!`,
+          placement: 'topRight',
+          duration: 20,
+        });
+      }
+      setModalVisible(false);
+      setEditingTask(null);
+      setError('');
+    } catch (err) {
+      console.error('Task Operation Error:', err.response || err);
+      const errorMessage = err.response?.data?.errors?.join(', ') || err.response?.data?.error || 'Failed to perform task operation';
       api.open({
         message: 'Error',
         description: errorMessage,
         placement: 'topRight',
         duration: 20,
       });
-      // notification.error({
-      //   message: 'Error',
-      //   description: errorMessage,
-      //   placement: 'topRight',
-      //   duration: 3,
-      // });
       setError(errorMessage);
     }
   };
 
-  const openNotification = (taskData) => {
-    console.log('Opening notification with:', taskData);
-    api.open({
-      message: `Task Assigned to ${user.email}`,
-      description: `The task "${taskData.title}" has been created successfully!`,
-      placement: 'topRight',
-      duration: 20,
-    });
-  };
-
-  // Columns for the task list
   const taskColumns = [
     { title: 'Task ID', dataIndex: 'id', key: 'id' },
     { title: 'Title', dataIndex: 'title', key: 'title' },
@@ -120,25 +128,12 @@ const UserDetails = () => {
         return <Tag color={color}>{status.toUpperCase()}</Tag>;
       },
     },
-    
-    // {
-    //   title: 'Assigned By',
-    //   dataIndex: 'assigned_by',
-    //   key: 'assigned_to',
-    //   render: (assigned_by) => `${assigned_by.email || 'Unassigned'}`,
-    // },
     {
       title: 'Action',
       key: 'action',
       render: (_, record) => (
         <Space size="middle">
-          <Button
-            type="primary"
-            onClick={() => {
-              setSelectedUserId(record.id);
-              setModalVisible(true);
-            }}
-          >
+          <Button type="primary" onClick={() => handleEditTask(record.id)}>
             Edit
           </Button>
         </Space>
@@ -169,10 +164,11 @@ const UserDetails = () => {
           <Descriptions.Item label="Role">{user.role}</Descriptions.Item>
         </Descriptions>
         <Space size="middle">
-           <Button
+          <Button
             type="primary"
             onClick={() => {
               setSelectedUserId(user.id);
+              setEditingTask(null); // Ensure we're in create mode
               setModalVisible(true);
             }}
           >
@@ -194,14 +190,16 @@ const UserDetails = () => {
           onCancel={() => {
             setModalVisible(false);
             setSelectedUserId(null);
+            setEditingTask(null);
           }}
-          onCreate={handleCreateTask}
+          onCreate={handleCreateOrUpdateTask}
           assignedToId={selectedUserId}
+          task={editingTask}
         />
 
         <Button
           type="default"
-          onClick={() => navigate('/users')} // Navigate back to UserList
+          onClick={() => navigate('/users')}
           style={{ marginTop: '20px' }}
         >
           Back to User List

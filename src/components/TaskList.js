@@ -1,8 +1,9 @@
 // src/components/TaskList.js
 import React, { useState, useEffect } from 'react';
-import { Space, Table, Tag, Input, Select, DatePicker, notification } from 'antd';
-import { fetchTasks } from '../services/api';
+import { Space, Table, Tag, Input, Select, DatePicker, notification, message, Popconfirm, Button, Alert } from 'antd';
+import { fetchTasks, updateTask, fetchTaskDetails } from '../services/api';
 import { useActionCable } from '../utils/ActionCableContext';
+import CreateTaskModal from './CreateTaskModal';
 
 const TaskList = () => {
   const [tasks, setTasks] = useState([]);
@@ -14,6 +15,11 @@ const TaskList = () => {
   const [dateRange, setDateRange] = useState([null, null]);
   const { cable } = useActionCable(); // Only need cable here
   const [api, contextHolder] = notification.useNotification();
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
+  const user = localStorage.getItem('user');
+  const userData = JSON.parse(user);
+  const userRole = userData.role;
 
   // Fetch initial tasks
   useEffect(() => {
@@ -91,6 +97,92 @@ const TaskList = () => {
   const handleStatusChange = (value) => setStatusFilter(value);
   const handleDateRangeChange = (dates) => setDateRange(dates);
 
+  // const confirm = (e) => {
+  //   console.log(e);
+  //   message.success('Click on Yes');
+  // };
+
+  const statusTransitions = {
+    pending: { next: 'in_progress', display: 'In Progress' },
+    in_progress: { next: 'completed', display: 'Complete' },
+  };
+
+  const handleMoveTask = async (taskId, newStatus) => {
+    try {
+      const updatedTaskData = { status: newStatus };
+      const response = await updateTask(taskId, updatedTaskData);
+      setTasks(prevTasks =>
+        prevTasks.map(task => (task.id === taskId ? { ...task, ...response.data } : task))
+      );
+      message.success('Task status updated successfully');
+    } catch (err) {
+      console.error('Update Task Error:', err.response || err);
+      message.error('Failed to update task status');
+    }
+  };
+
+  // const handleEditTask = (taskId) => {
+  //   console.log(`Editing task with ID: ${taskId}`);
+  //   // Replace with logic to open a modal or navigate to an edit page
+  // };
+
+   const handleEditTask = async (taskId) => {
+    console.log('Editing task with ID:', taskId); // Debug
+    try {
+      const response = await fetchTaskDetails(taskId);
+      console.log('Task details fetched:', response.data); // Debug
+      setEditingTask(response.data);
+      debugger
+      setModalVisible(true);
+    } catch (err) {
+      console.error('Fetch Task Details Error:', err.response || err);
+      api.open({
+        message: 'Error',
+        description: err.response?.data?.error || 'Failed to fetch task details',
+        placement: 'topRight',
+        duration: 20,
+      });
+    }
+  };
+
+  const cancel = (e) => {
+    console.log(e);
+    message.error('Click on No');
+  };
+
+  const handleUpdateTask = async (taskData) => {
+    debugger
+    try {
+      let response;
+      if (editingTask) {
+        response = await updateTask(editingTask.id, taskData);
+        debugger
+        setTasks(prevTasks =>
+          prevTasks.map(task => (task.id === editingTask.id ? { ...task, ...response.data } : task))
+        );
+        api.open({
+          message: 'Task Updated',
+          description: `The task "${response.data.title}" has been updated successfully!`,
+          placement: 'topRight',
+          duration: 20,
+        });
+      }
+      setModalVisible(false);
+      setEditingTask(null);
+      setError('');
+    } catch (err) {
+      console.error('Task Operation Error:', err.response || err);
+      const errorMessage = err.response?.data?.errors?.join(', ') || err.response?.data?.error || 'Failed to perform task operation';
+      api.open({
+        message: 'Error',
+        description: errorMessage,
+        placement: 'topRight',
+        duration: 20,
+      });
+      setError(errorMessage);
+    }
+  };
+
   const columns = [
     { title: 'Title', dataIndex: 'title', key: 'title', render: (text) => <a>{text}</a> },
     { title: 'Description', dataIndex: 'description', key: 'description' },
@@ -118,12 +210,40 @@ const TaskList = () => {
     {
       title: 'Action',
       key: 'action',
-      render: (_, record) => (
-        <Space size="middle">
-          <a>Edit</a>
-          <a>Delete</a>
-        </Space>
-      ),
+      render: (_, record) => {
+        if (userRole === 'user' && record.status in statusTransitions) {
+          const { next, display } = statusTransitions[record.status];
+          const buttonText = `Move To ${display}`;
+          return (
+            <Space size="middle">
+              <Popconfirm
+                title="Move task"
+                description={`Are you sure to move this task to ${display.toLowerCase()}?`}
+                onConfirm={() => handleMoveTask(record.id, next)}
+                onCancel={cancel}
+                okText="Yes"
+                cancelText="No"
+              >
+                <Button danger>{buttonText}</Button>
+              </Popconfirm>
+            </Space>
+          );
+        }
+        // For admins or managers
+        else if (userRole === 'admin' || userRole === 'manager') {
+          return (
+            <Space size="middle">
+              <Button type="primary" onClick={() => handleEditTask(record.id)}>
+                Edit
+              </Button>
+            </Space>
+          );
+        }
+        // For completed tasks or other roles
+        else {
+          return <Space size="middle"><Alert message="Completed" type="success" /></Space>;
+        }
+      },
     },
   ];
 
@@ -164,6 +284,18 @@ const TaskList = () => {
           loading={loading}
           rowKey="id"
           pagination={{ pageSize: 10 }}
+        />
+
+        <CreateTaskModal
+          visible={modalVisible}
+          onCancel={() => {
+            setModalVisible(false);
+            // setSelectedUserId(null);
+            setEditingTask(null);
+          }}
+          onCreate={handleUpdateTask}
+          // assignedToId={selectedUserId}
+          task={editingTask}
         />
       </div>
     </>

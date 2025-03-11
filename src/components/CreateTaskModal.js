@@ -1,61 +1,76 @@
 // src/components/CreateTaskModal.js
-import React from 'react';
-import { Modal, Form, Input, DatePicker, Button } from 'antd';
+import React, { useEffect } from 'react';
+import { Modal, Form, Input, Select, DatePicker } from 'antd';
 import moment from 'moment';
 
-const CreateTaskModal = ({ visible, onCancel, onCreate, assignedToId }) => {
+const { Option } = Select;
+
+const CreateTaskModal = ({ visible, onCancel, onCreate, assignedToId, task }) => {
   const [form] = Form.useForm();
 
-  const onFinish = (values) => {
-    const taskData = {
-      title: values.title,
-      description: values.description,
-      due_date: values.due_date ? values.due_date.format('YYYY-MM-DD') : null,
-      assigned_to_id: assignedToId,
-    };
-    onCreate(taskData);
-    form.resetFields();
+  useEffect(() => {
+    if (task) {
+      // Populate form with task data when editing
+      form.setFieldsValue({
+        title: task.title,
+        description: task.description,
+        status: task.status,
+        due_date: task.due_date ? moment(task.due_date) : null,
+      });
+    } else {
+      // Reset form when creating a new task
+      form.resetFields();
+    }
+  }, [task, form]);
+
+  const handleSubmit = async () => {
+    try {
+      const values = await form.validateFields();
+      const taskData = {
+        ...values,
+        assigned_to_id: assignedToId,
+        due_date: values.due_date ? values.due_date.format('YYYY-MM-DD') : null,
+      };
+      onCreate(taskData);
+      form.resetFields();
+    } catch (error) {
+      console.error('Validation failed:', error);
+    }
   };
 
   return (
     <Modal
+      title={task ? 'Edit Task' : 'Create New Task'}
       visible={visible}
-      title="Create Task"
-      okText="Create"
-      cancelText="Cancel"
+      onOk={handleSubmit}
       onCancel={onCancel}
-      onOk={() => form.submit()}
+      okText={task ? 'Update' : 'Create'}
     >
-      <Form
-        form={form}
-        layout="vertical"
-        onFinish={onFinish}
-        initialValues={{
-          assigned_to_id: assignedToId,
-        }}
-      >
+      <Form form={form} layout="vertical">
         <Form.Item
           name="title"
           label="Title"
-          rules={[{ required: true, message: 'Please input the task title!' }]}
+          rules={[{ required: true, message: 'Please input the title!' }]}
         >
-          <Input placeholder="Enter task title" />
+          <Input />
+        </Form.Item>
+        <Form.Item name="description" label="Description">
+          <Input.TextArea />
         </Form.Item>
         <Form.Item
-          name="description"
-          label="Description"
-          rules={[{ required: true, message: 'Please input the task description!' }]}
+          name="status"
+          label="Status"
+          rules={[{ required: true, message: 'Please select a status!' }]}
         >
-          <Input.TextArea placeholder="Enter task description" rows={4} />
+          <Select>
+            <Option value="pending">Pending</Option>
+            <Option value="in_progress">In Progress</Option>
+            <Option value="completed">Completed</Option>
+          </Select>
         </Form.Item>
-        <Form.Item
-          name="due_date"
-          label="Due Date"
-          rules={[{ required: true, message: 'Please select a due date!' }]}
-        >
-          <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
+        <Form.Item name="due_date" label="Due Date">
+          <DatePicker style={{ width: '100%' }} />
         </Form.Item>
-  
       </Form>
     </Modal>
   );
