@@ -1,7 +1,7 @@
 // src/components/TaskList.js
 import React, { useState, useEffect } from 'react';
 import { Space, Table, Tag, Input, Select, DatePicker, notification, message, Popconfirm, Button, Alert } from 'antd';
-import { fetchTasks, updateTask, fetchTaskDetails } from '../services/api';
+import { fetchTasks, updateTask, fetchTaskDetails, deleteTask } from '../services/api';
 import { useActionCable } from '../utils/ActionCableContext';
 import CreateTaskModal from './CreateTaskModal';
 
@@ -17,9 +17,8 @@ const TaskList = () => {
   const [api, contextHolder] = notification.useNotification();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
-  const user = localStorage.getItem('user');
-  const userData = JSON.parse(user);
-  const userRole = userData.role;
+  const user = JSON.parse(localStorage.getItem('user'));
+  const userRole = user.role;
 
   // Fetch initial tasks
   useEffect(() => {
@@ -57,6 +56,7 @@ const TaskList = () => {
     }
 
     console.log('Subscribing to TaskChannel');
+    const channelName = `tasks_${user.id}`;
     const subscription = cable.subscriptions.create(
       { channel: 'TaskChannel' },
       {
@@ -72,6 +72,18 @@ const TaskList = () => {
               console.log('Updated tasks:', newTasks);
               return newTasks;
             });
+          } else if (data.action === 'task_updated') {
+            console.log('Task updated detected:', data);
+            openNotification(data);
+            setTasks((prev) =>
+              prev.map(task => (task.id === data.task.id ? { ...task, ...data.task, key: task.id } : task))
+            );
+          } else if (data.action === 'status_updated') {
+            console.log('Status updated detected:', data);
+            openNotification(data);
+            setTasks((prev) =>
+              prev.map(task => (task.id === data.task.id ? { ...task, ...data.task, key: task.id } : task))
+            );
           }
         },
       }
@@ -81,7 +93,7 @@ const TaskList = () => {
       console.log('Unsubscribing from TaskChannel');
       subscription.unsubscribe();
     };
-  }, [cable]); // Depend on cable to re-subscribe if it changes
+  }, [cable, user.id]);
 
   const openNotification = (data) => {
     console.log('Opening notification with:', data);
@@ -96,11 +108,6 @@ const TaskList = () => {
   const handleSearch = (e) => setSearchQuery(e.target.value);
   const handleStatusChange = (value) => setStatusFilter(value);
   const handleDateRangeChange = (dates) => setDateRange(dates);
-
-  // const confirm = (e) => {
-  //   console.log(e);
-  //   message.success('Click on Yes');
-  // };
 
   const statusTransitions = {
     pending: { next: 'in_progress', display: 'In Progress' },
@@ -121,18 +128,12 @@ const TaskList = () => {
     }
   };
 
-  // const handleEditTask = (taskId) => {
-  //   console.log(`Editing task with ID: ${taskId}`);
-  //   // Replace with logic to open a modal or navigate to an edit page
-  // };
-
    const handleEditTask = async (taskId) => {
     console.log('Editing task with ID:', taskId); // Debug
     try {
       const response = await fetchTaskDetails(taskId);
       console.log('Task details fetched:', response.data); // Debug
       setEditingTask(response.data);
-      debugger
       setModalVisible(true);
     } catch (err) {
       console.error('Fetch Task Details Error:', err.response || err);
@@ -145,18 +146,38 @@ const TaskList = () => {
     }
   };
 
+  const handleDeleteTask = async (taskId) => {
+    try {
+      await deleteTask(taskId); // Call the DELETE API
+      setTasks(prevTasks => prevTasks.filter(task => task.id !== taskId)); // Remove task from state
+      api.open({
+        message: 'Task Deleted',
+        description: `The task has been deleted successfully!`,
+        placement: 'topRight',
+        duration: 20,
+      });
+    } catch (err) {
+      console.error('Delete Task Error:', err.response || err);
+      const errorMessage = err.response?.data?.alert || 'Failed to delete task';
+      api.open({
+        message: 'Error',
+        description: errorMessage,
+        placement: 'topRight',
+        duration: 20,
+      });
+    }
+  };
+
   const cancel = (e) => {
     console.log(e);
     message.error('Click on No');
   };
 
   const handleUpdateTask = async (taskData) => {
-    debugger
     try {
       let response;
       if (editingTask) {
         response = await updateTask(editingTask.id, taskData);
-        debugger
         setTasks(prevTasks =>
           prevTasks.map(task => (task.id === editingTask.id ? { ...task, ...response.data } : task))
         );
@@ -236,6 +257,22 @@ const TaskList = () => {
               <Button type="primary" onClick={() => handleEditTask(record.id)}>
                 Edit
               </Button>
+              <Space size="middle">
+              <Popconfirm
+                title="Delete Task"
+                description={`Are you sure?`}
+                onConfirm={() => handleDeleteTask(record.id)}
+                onCancel={cancel}
+                okText="Yes"
+                cancelText="No"
+              >
+                <Button danger>Delete</Button>
+              </Popconfirm>
+            </Space>
+
+              {/*<Button type="primary" onClick={() => handleDeleteTask(record.id)}>
+                Delete
+              </Button>*/}
             </Space>
           );
         }
@@ -290,11 +327,9 @@ const TaskList = () => {
           visible={modalVisible}
           onCancel={() => {
             setModalVisible(false);
-            // setSelectedUserId(null);
             setEditingTask(null);
           }}
           onCreate={handleUpdateTask}
-          // assignedToId={selectedUserId}
           task={editingTask}
         />
       </div>

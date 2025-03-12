@@ -46,4 +46,8 @@ export const fetchTaskDetails = async (taskId) => {
   return api.get(`/api/v1/tasks/${taskId}`);
 };
 
+export const deleteTask = async (taskId) => {
+  return api.delete(`/api/v1/tasks/${taskId}`);
+};
+
 export default api;

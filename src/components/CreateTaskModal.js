@@ -57,17 +57,19 @@ const CreateTaskModal = ({ visible, onCancel, onCreate, assignedToId, task }) =>
         <Form.Item name="description" label="Description">
           <Input.TextArea />
         </Form.Item>
-        <Form.Item
-          name="status"
-          label="Status"
-          rules={[{ required: true, message: 'Please select a status!' }]}
-        >
-          <Select>
-            <Option value="pending">Pending</Option>
-            <Option value="in_progress">In Progress</Option>
-            <Option value="completed">Completed</Option>
-          </Select>
-        </Form.Item>
+        {task ? (
+          <Form.Item
+            name="status"
+            label="Status"
+            rules={[{ required: true, message: 'Please select a status!' }]}
+          >
+            <Select>
+              <Option value="pending">Pending</Option>
+              <Option value="in_progress">In Progress</Option>
+              <Option value="completed">Completed</Option>
+            </Select>
+          </Form.Item>
+        ) : null}
         <Form.Item name="due_date" label="Due Date">
           <DatePicker style={{ width: '100%' }} />
         </Form.Item>
