@@ -40,7 +40,7 @@ const UserList = () => {
   }, [searchQuery]);
 
   const openNotification = (taskData) => {
-    setTaskTitle(taskData.title); // Update task title for notification
+    setTaskTitle(taskData.title);
     notificationApi.info({
       message: `Task Assigned to ${userEmail}`,
       description: (

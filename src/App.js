@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom'; // Added Link and Navigate
+import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
 // import './App.css';
 import { ConfigProvider, theme as antdTheme } from 'antd';
 import DarkModeToggle from './components/DarkModeToggle';
@@ -15,15 +15,13 @@ import { ActionCableProvider } from './utils/ActionCableContext';
 function AppContent() {
   const [user, setUser] = useState(null);
   const { theme } = useContext(ThemeContext);
-
-  // Define theme configuration
   const themeConfig = {
     algorithm: theme === 'dark' ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
     token: {
       // Customize as needed
-      colorPrimary: theme === 'dark' ? '#4a90e2' : '#007bff', // Primary color
-      colorBgBase: theme === 'dark' ? '#1a1a1a' : '#ffffff',  // Background
-      colorTextBase: theme === 'dark' ? '#ffffff' : '#000000', // Text
+      colorPrimary: theme === 'dark' ? '#4a90e2' : '#007bff',
+      colorBgBase: theme === 'dark' ? '#1a1a1a' : '#ffffff', 
+      colorTextBase: theme === 'dark' ? '#ffffff' : '#000000',
     },
   };
 
@@ -60,10 +58,6 @@ function AppContent() {
       {children}
     </div>
   );
-
-  const onChange = (checked) => {
-    console.log(`switch to ${checked}`);
-  };
 
   return (
     <ConfigProvider theme={themeConfig}>
@@ -165,8 +159,6 @@ function AppContent() {
   );
 }
 
-// Wrap App with ThemeProvider
-// Export App wrapped with ThemeProvider
 const App = () => (
   <ThemeProvider>
     <AppContent />

@@ -10,7 +10,6 @@ const CreateTaskModal = ({ visible, onCancel, onCreate, assignedToId, task }) =>
 
   useEffect(() => {
     if (task) {
-      // Populate form with task data when editing
       form.setFieldsValue({
         title: task.title,
         description: task.description,
@@ -18,7 +17,6 @@ const CreateTaskModal = ({ visible, onCancel, onCreate, assignedToId, task }) =>
         due_date: task.due_date ? moment(task.due_date) : null,
       });
     } else {
-      // Reset form when creating a new task
       form.resetFields();
     }
   }, [task, form]);
