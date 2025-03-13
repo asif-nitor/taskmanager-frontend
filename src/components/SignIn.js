@@ -1,8 +1,7 @@
-// src/components/SignIn.js
 import React, { useState, createContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signIn } from '../services/api';
-import { Button, Checkbox, Form, Input, notification } from 'antd';
+import { Button, Form, Input, notification } from 'antd';
 
 const NotificationContext = createContext({
   userEmail: 'User',
@@ -98,7 +97,6 @@ const SignIn = ({ setUser }) => {
           >
             <Input placeholder="Enter your email" />
           </Form.Item>
-
           <Form.Item
             label="Password"
             name="password"
@@ -106,11 +104,6 @@ const SignIn = ({ setUser }) => {
           >
             <Input.Password placeholder="Enter your password" />
           </Form.Item>
-
-          {/*<Form.Item name="remember" valuePropName="checked" label={null}>
-            <Checkbox>Remember me</Checkbox>
-          </Form.Item>*/}
-
           <Form.Item label={null} wrapperCol={{ offset: 8, span: 16 }}>
             <Button type="primary" htmlType="submit">
               Sign In

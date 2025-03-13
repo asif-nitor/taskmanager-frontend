@@ -1,4 +1,3 @@
-// src/components/UserDetails.js
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchUserDetails, createTask, updateTask, fetchTaskDetails } from '../services/api';
@@ -70,7 +69,6 @@ const UserDetails = () => {
       let response;
       if (editingTask) {
         response = await updateTask(editingTask.id, taskData);
-        debugger
         setTasks(prevTasks =>
           prevTasks.map(task => (task.id === editingTask.id ? { ...task, ...response.data } : task))
         );
@@ -168,7 +166,7 @@ const UserDetails = () => {
             type="primary"
             onClick={() => {
               setSelectedUserId(user.id);
-              setEditingTask(null); // Ensure we're in create mode
+              setEditingTask(null);
               setModalVisible(true);
             }}
           >

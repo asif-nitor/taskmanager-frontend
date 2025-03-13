@@ -1,4 +1,3 @@
-// src/components/UserList.js
 import React, { useState, useEffect, createContext } from 'react';
 import { fetchUsers, createTask } from '../services/api';
 import { Space, Table, Button, notification, Input } from 'antd';
@@ -56,7 +55,6 @@ const UserList = () => {
   const handleCreateTask = async (taskData) => {
     try {
       const response = await createTask(taskData);
-      debugger
       setUserEmail(response.data.assigned_to.email || '')
       console.log('Task Created:', response.data);
       openNotification(taskData);

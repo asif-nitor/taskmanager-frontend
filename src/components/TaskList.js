@@ -1,4 +1,3 @@
-// src/components/TaskList.js
 import React, { useState, useEffect } from 'react';
 import { Space, Table, Tag, Input, Select, DatePicker, notification, message, Popconfirm, Button, Alert } from 'antd';
 import { fetchTasks, updateTask, fetchTaskDetails, deleteTask } from '../services/api';
@@ -48,7 +47,6 @@ const TaskList = () => {
     loadTasks();
   }, [searchQuery, statusFilter, dateRange]);
 
-  // Handle ActionCable subscription
   useEffect(() => {
     if (!cable) {
       console.log('Cable not available');
@@ -56,7 +54,6 @@ const TaskList = () => {
     }
 
     console.log('Subscribing to TaskChannel');
-    const channelName = `tasks_${user.id}`;
     const subscription = cable.subscriptions.create(
       { channel: 'TaskChannel' },
       {
@@ -121,18 +118,27 @@ const TaskList = () => {
       setTasks(prevTasks =>
         prevTasks.map(task => (task.id === taskId ? { ...task, ...response.data } : task))
       );
-      message.success('Task status updated successfully');
+      api.open({
+        message: 'Status Updated',
+        description: `The task status moved to ${newStatus} successfully!`,
+        placement: 'topRight',
+        duration: 20,
+      });
     } catch (err) {
       console.error('Update Task Error:', err.response || err);
-      message.error('Failed to update task status');
+      api.open({
+        message: 'Error',
+        description: err.response?.data?.error || 'Failed to fetch task details',
+        placement: 'topRight',
+        duration: 20,
+      });
     }
   };
 
    const handleEditTask = async (taskId) => {
-    console.log('Editing task with ID:', taskId); // Debug
     try {
       const response = await fetchTaskDetails(taskId);
-      console.log('Task details fetched:', response.data); // Debug
+      console.log('Task details fetched:', response.data);
       setEditingTask(response.data);
       setModalVisible(true);
     } catch (err) {
@@ -276,7 +282,6 @@ const TaskList = () => {
             </Space>
           );
         }
-        // For completed tasks or other roles
         else {
           return <Space size="middle"><Alert message="Completed" type="success" /></Space>;
         }
@@ -286,17 +291,19 @@ const TaskList = () => {
 
   return (
     <>
-      {contextHolder} {/* Must be at the root for notifications to work */}
+      {contextHolder}
       <div style={{ maxWidth: 1000, margin: '20px auto', padding: '20px' }}>
         <h2>Task List</h2>
         {error && <p style={{ color: 'red', textAlign: 'center' }}>{error}</p>}
         <Space.Compact block>
-          <Input
-            placeholder="Search by assigned user's email"
-            value={searchQuery}
-            onChange={handleSearch}
-            style={{ width: '30%', marginBottom: '20px' }}
-          />
+          { (userRole === 'admin' || userRole === 'manager') && (
+            <Input
+              placeholder="Search by assigned user's email"
+              value={searchQuery}
+              onChange={handleSearch}
+              style={{ width: '30%', marginBottom: '20px' }}
+            />
+          )}
           <DatePicker.RangePicker
             value={dateRange}
             onChange={handleDateRangeChange}

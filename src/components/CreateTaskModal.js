@@ -1,4 +1,3 @@
-// src/components/CreateTaskModal.js
 import React, { useEffect } from 'react';
 import { Modal, Form, Input, Select, DatePicker } from 'antd';
 import moment from 'moment';
@@ -20,6 +19,10 @@ const CreateTaskModal = ({ visible, onCancel, onCreate, assignedToId, task }) =>
       form.resetFields();
     }
   }, [task, form]);
+
+  // const disabledDate = (current) => {
+  //   return current && current <= moment().startOf('day');
+  // };
 
   const handleSubmit = async () => {
     try {
@@ -69,7 +72,9 @@ const CreateTaskModal = ({ visible, onCancel, onCreate, assignedToId, task }) =>
           </Form.Item>
         ) : null}
         <Form.Item name="due_date" label="Due Date">
-          <DatePicker style={{ width: '100%' }} />
+          <DatePicker
+            style={{ width: '100%' }}
+          />
         </Form.Item>
       </Form>
     </Modal>
