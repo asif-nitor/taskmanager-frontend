@@ -18,10 +18,15 @@ function AppContent() {
   const themeConfig = {
     algorithm: theme === 'dark' ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
     token: {
-      // Customize as needed
-      colorPrimary: theme === 'dark' ? '#4a90e2' : '#007bff',
-      colorBgBase: theme === 'dark' ? '#1a1a1a' : '#ffffff', 
+      colorBgBase: theme === 'dark' ? '#1a1a1a' : '#ffffff',
+      colorBgContainer: theme === 'dark' ? '#252525' : '#ffffff',
+      colorBgLayout: theme === 'dark' ? '#1a1a1a' : '#f0f2f5',
       colorTextBase: theme === 'dark' ? '#ffffff' : '#000000',
+      colorPrimary: theme === 'dark' ? '#4a90e2' : '#007bff',
+      
+      // colorPrimary: theme === 'dark' ? '#4a90e2' : '#007bff',
+      // colorBgBase: theme === 'dark' ? '#1a1a1a' : '#ffffff', 
+      // colorTextBase: theme === 'dark' ? '#ffffff' : '#000000',
     },
   };
 
@@ -63,7 +68,7 @@ function AppContent() {
     <ConfigProvider theme={themeConfig}>
     <DarkModeToggle />
     <Router>
-      <div style={{ textAlign: 'center', padding: '20px' }}>
+      <div style={{ textAlign: 'center', padding: '20px', backgroundColor: theme === 'dark' ? '#1a1a1a' : '#ffffff' }}>
         <h1>Task Manager</h1>
         {user ? (
           <div>

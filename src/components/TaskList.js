@@ -228,12 +228,19 @@ const TaskList = () => {
       key: 'due_date',
       render: (date) => (date ? new Date(date).toLocaleDateString() : 'N/A'),
     },
-    {
-      title: 'Assigned To',
-      dataIndex: 'assigned_to',
-      key: 'assigned_to',
-      render: (assigned_to) => assigned_to?.email || 'Unassigned',
-    },
+    userRole === 'user'
+    ? {
+        title: 'Assigned By',
+        dataIndex: 'assigned_by',
+        key: 'assigned_by',
+        render: (assigned_by) => assigned_by?.email || 'Unassigned',
+      } :
+      {
+        title: 'Assigned To',
+        dataIndex: 'assigned_to',
+        key: 'assigned_to',
+        render: (assigned_to) => assigned_to?.email || 'Unassigned',
+      },
     {
       title: 'Action',
       key: 'action',
@@ -327,7 +334,7 @@ const TaskList = () => {
           dataSource={tasks}
           loading={loading}
           rowKey="id"
-          pagination={{ pageSize: 10 }}
+          pagination={{ pageSize: 20 }}
         />
 
         <CreateTaskModal
